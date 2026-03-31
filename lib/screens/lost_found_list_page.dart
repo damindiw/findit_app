@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'item_detail_page.dart'; // Added the import for navigation
+import 'item_detail_page.dart';
 
 class LostFoundListPage extends StatefulWidget {
   final String status; // Expects 'Lost' or 'Found'
@@ -20,30 +20,50 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize with status filter
-    _currentQuery = FirebaseFirestore.instance
-        .collection('reports')
-        .where('status', isEqualTo: widget.status);
+    _resetQuery();
   }
 
+  // Helper to set query back to default (only status and default category)
+  void _resetQuery() {
+    setState(() {
+      _currentQuery = FirebaseFirestore.instance
+          .collection('reports')
+          .where('status', isEqualTo: widget.status);
+    });
+  }
+
+  // THE UPDATED SEARCH LOGIC
   void _applySearch() {
     setState(() {
+      // 1. Start with the Base Query
       Query newQuery = FirebaseFirestore.instance
           .collection('reports')
           .where('status', isEqualTo: widget.status);
 
-      // Apply specific filters
+      // 2. Apply Item Type (This is always selected in dropdown)
       newQuery = newQuery.where('itemType', isEqualTo: _selectedType);
 
+      // 3. ONLY filter by Date if the user has typed something
       if (_dateController.text.trim().isNotEmpty) {
         newQuery = newQuery.where('date', isEqualTo: _dateController.text.trim());
       }
 
+      // 4. ONLY filter by Location if the user has typed something
       if (_locationController.text.trim().isNotEmpty) {
         newQuery = newQuery.where('location', isEqualTo: _locationController.text.trim());
       }
 
       _currentQuery = newQuery;
+    });
+  }
+
+  // Clear all text and reset the list
+  void _clearFilters() {
+    setState(() {
+      _dateController.clear();
+      _locationController.clear();
+      _selectedType = 'Smart device';
+      _resetQuery();
     });
   }
 
@@ -78,16 +98,24 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
                 _buildLabel("Location :"),
                 _buildTextField(_locationController, "e.g. FOC Canteen"),
                 const SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: _applySearch,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00A86B),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _applySearch,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00A86B),
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: const Text("Search", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
-                    child: const Text("Search", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
+                    const SizedBox(width: 15),
+                    TextButton(
+                      onPressed: _clearFilters,
+                      child: const Text("Clear", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -106,7 +134,6 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
-                    // Pass the whole document to the builder
                     var doc = snapshot.data!.docs[index];
                     return _buildItemCard(context, doc);
                   },
@@ -158,7 +185,6 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
     
     return GestureDetector(
       onTap: () {
-        // Navigate to Detail Page when card is clicked
         Navigator.push(
           context,
           MaterialPageRoute(

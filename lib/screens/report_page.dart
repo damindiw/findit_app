@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Required for User ID
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
@@ -16,6 +16,8 @@ class _ReportPageState extends State<ReportPage> {
   final _descController = TextEditingController();
   final _dateController = TextEditingController();
   final _locationController = TextEditingController();
+  // NEW: Controller for the contact number
+  final _contactController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,7 @@ class _ReportPageState extends State<ReportPage> {
               ),
             ),
             const SizedBox(height: 20),
+            
             _buildLabel("Item Type :"),
             _buildFieldContainer(DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -66,12 +69,14 @@ class _ReportPageState extends State<ReportPage> {
                 onChanged: (v) => setState(() => _selectedType = v!),
               ),
             )),
+
             _buildLabel("Item Name :"),
             _buildFieldContainer(TextField(
               controller: _nameController, 
               style: const TextStyle(color: Colors.black), 
               decoration: const InputDecoration(border: InputBorder.none, hintText: "e.g. iPhone 16 Pro"),
             )),
+
             _buildLabel("Description :"),
             _buildFieldContainer(TextField(
               controller: _descController, 
@@ -79,18 +84,30 @@ class _ReportPageState extends State<ReportPage> {
               style: const TextStyle(color: Colors.black), 
               decoration: const InputDecoration(border: InputBorder.none),
             )),
+
             _buildLabel("Date :"),
             _buildFieldContainer(TextField(
               controller: _dateController, 
               style: const TextStyle(color: Colors.black), 
               decoration: const InputDecoration(border: InputBorder.none, hintText: "30/03/2026"),
             )),
+
             _buildLabel("Location :"),
             _buildFieldContainer(TextField(
               controller: _locationController, 
               style: const TextStyle(color: Colors.black), 
               decoration: const InputDecoration(border: InputBorder.none, hintText: "e.g. FOC Canteen"),
             )),
+
+            // NEW: Contact Number Field
+            _buildLabel("Contact Number :"),
+            _buildFieldContainer(TextField(
+              controller: _contactController,
+              keyboardType: TextInputType.phone, // Opens numeric keypad
+              style: const TextStyle(color: Colors.black),
+              decoration: const InputDecoration(border: InputBorder.none, hintText: "e.g. 0771234567"),
+            )),
+
             const SizedBox(height: 40),
             Center(
               child: ElevatedButton(
@@ -148,18 +165,24 @@ class _ReportPageState extends State<ReportPage> {
     );
   }
 
-  // --- UPDATED SUBMIT LOGIC ---
   void _submitReport() async {
-    // 1. Basic check
+    // Basic validation
     if (_nameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please provide an item name")),
       );
       return;
     }
+    
+    // NEW: Check if contact is provided
+    if (_contactController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please provide a contact number")),
+      );
+      return;
+    }
 
     try {
-      // 2. Get current User ID
       String? userId = FirebaseAuth.instance.currentUser?.uid;
 
       if (userId == null) {
@@ -169,21 +192,21 @@ class _ReportPageState extends State<ReportPage> {
         return;
       }
 
-      // 3. Save to Firestore
+      // Save to Firestore with the NEW contact field
       await FirebaseFirestore.instance.collection('reports').add({
-        'userId': userId, // CRITICAL: This connects the report to you
+        'userId': userId,
         'status': _status,
         'itemType': _selectedType,
         'itemName': _nameController.text.trim(),
         'description': _descController.text.trim(),
         'date': _dateController.text.trim(),
         'location': _locationController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(), // Useful for sorting
+        'contact': _contactController.text.trim(), // NEW FIELD SAVED HERE
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;
 
-      // 4. Show success and go back
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Report submitted successfully!")),
       );
