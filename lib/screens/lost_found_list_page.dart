@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'item_detail_page.dart'; // Added the import for navigation
 
 class LostFoundListPage extends StatefulWidget {
   final String status; // Expects 'Lost' or 'Found'
@@ -105,8 +106,9 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
-                    var data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                    return _buildItemCard(data);
+                    // Pass the whole document to the builder
+                    var doc = snapshot.data!.docs[index];
+                    return _buildItemCard(context, doc);
                   },
                 );
               },
@@ -128,7 +130,7 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
       decoration: BoxDecoration(color: const Color(0xFF9E9E9E), borderRadius: BorderRadius.circular(10)),
       child: TextField(
         controller: controller, 
-        style: const TextStyle(color: Colors.black), // Black text
+        style: const TextStyle(color: Colors.black), 
         decoration: InputDecoration(hintText: hint, hintStyle: const TextStyle(color: Colors.black54), border: InputBorder.none),
       ),
     );
@@ -143,7 +145,7 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
           value: items.contains(currentVal) ? currentVal : items[0],
           isExpanded: true,
           dropdownColor: const Color(0xFF9E9E9E),
-          style: const TextStyle(color: Colors.black, fontSize: 16), // Black text
+          style: const TextStyle(color: Colors.black, fontSize: 16), 
           items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(color: Colors.black)))).toList(),
           onChanged: onChanged,
         ),
@@ -151,22 +153,35 @@ class _LostFoundListPageState extends State<LostFoundListPage> {
     );
   }
 
-  Widget _buildItemCard(Map<String, dynamic> data) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: const Color(0xFFB0B0B0), borderRadius: BorderRadius.circular(15)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(data['itemName'] ?? 'Unknown', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
-          Text(data['date'] ?? 'N/A', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          const Text("more...", style: TextStyle(color: Colors.black54, fontSize: 12)),
-          const SizedBox(height: 5),
-          Text(data['description'] ?? '', style: const TextStyle(color: Colors.black)),
-          const SizedBox(height: 10),
-          Text("Contact: ${data['contact'] ?? 'N/A'}", style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
-        ],
+  Widget _buildItemCard(BuildContext context, QueryDocumentSnapshot doc) {
+    var data = doc.data() as Map<String, dynamic>;
+    
+    return GestureDetector(
+      onTap: () {
+        // Navigate to Detail Page when card is clicked
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ItemDetailPage(item: doc),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 15),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: const Color(0xFFB0B0B0), borderRadius: BorderRadius.circular(15)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(data['itemName'] ?? 'Unknown', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(data['date'] ?? 'N/A', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            const Text("Tap to see more...", style: TextStyle(color: Color(0xFF00A86B), fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 5),
+            Text(data['description'] ?? '', style: const TextStyle(color: Colors.black), maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 10),
+            Text("Contact: ${data['contact'] ?? 'N/A'}", style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }
